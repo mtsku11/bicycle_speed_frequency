@@ -78,7 +78,7 @@ async function connectToGarmin() {
 
 let lastRev = null;
 let lastTime = null;
-let prevFreq = 0;  // 🔻 Start at lowest pitch
+let prevFreq = 0;
 let lastMovementTime = null;
 let idle = false;
 let hasInitialized = false;
@@ -88,7 +88,7 @@ function parseSpeed(dataView) {
   console.log("Raw BLE data:", Array.from(new Uint8Array(dataView.buffer)));
 
   const currentRev = dataView.getUint32(1, true);
-  const currentTime = dataView.getUint16(5, true); // in 1/1024s
+  const currentTime = dataView.getUint16(5, true);
 
   if (!hasInitialized) {
     lastRev = currentRev;
@@ -108,7 +108,7 @@ function parseSpeed(dataView) {
   deltaTime /= 1024;
   if (deltaTime < 0.01) deltaTime = 0.01;
 
-  // 🔁 Only update freq/speed when the wheel has moved
+ 
   if (deltaRev > 0) {
     const speed = deltaRev / deltaTime;
     const limitedSpeed = Math.min(speed, 10);
@@ -132,17 +132,15 @@ function parseSpeed(dataView) {
     return freq;
   }
 
-  // If no movement, return previous freq — no update to display
   return prevFreq;
 }
 
 setInterval(() => {
   const now = Date.now();
 
-  // Let low speed extend idle delay
   let idleTimeout = 2000;
-  if (prevFreq < 620) { // Roughly ~6.5 km/h
-    idleTimeout = 3500; // wait longer if going slow
+  if (prevFreq < 620) { 
+    idleTimeout = 3500;
   }
 
   if (!idle && lastMovementTime && now - lastMovementTime > idleTimeout) {
