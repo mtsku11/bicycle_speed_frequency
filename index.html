@@ -70,7 +70,7 @@ async function connectToGarmin() {
 });
 
     await characteristic.startNotifications();
-    console.log("🔗 Connected to Garmin speed sensor");
+    console.log("Connected to Garmin speed sensor");
   } catch (err) {
     console.error("Bluetooth error:", err);
   }
