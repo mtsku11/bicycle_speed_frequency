@@ -9,7 +9,6 @@
 let csound = null;
 let isOn = false;
 
-// Csound orchestra code
 const code = `
 instr 1
   kamp = port(chnget:k("amp"), 0.01, -1)
@@ -18,27 +17,37 @@ instr 1
 endin
 schedule(1, 0, -1)
 `;
-
+//start csound
 async function start() {
   if (csound == null) {
+    //import csound
     const { Csound } = await import('./js/csound.js');
+    //create csound engine
     csound = await Csound();
+    //set realtime output
     await csound.setOption("-odac");
+    //compile orchestra code
     await csound.compileOrc(code);
+    //set initial parameters
     await csound.setControlChannel('amp', 0.5);
-    await csound.setControlChannel('freq', 0); // Default
+    await csound.setControlChannel('freq', 0);
+    //start engine
     await csound.start();
-
+    
+    //connect to garmin sensor
     connectToGarmin();
 
+    //update button appearance
     document.getElementById("start button").value = "ON";
     document.getElementById("start button").style.color = "red";
   } else {
     if (isOn) {
+      //stop sound
       await csound.inputMessage("i-1 0 1");
       document.getElementById("start button").value = "OFF";
       document.getElementById("start button").style.color = "black";
     } else {
+      //start sound
       await csound.inputMessage("i1 0 -1");
       document.getElementById("start button").value = "ON";
       document.getElementById("start button").style.color = "red";
@@ -46,12 +55,12 @@ async function start() {
   }
   isOn = !isOn;
 }
-
+//set csound parameter
 async function setParameter(channel, value) {
   if (csound) await csound.setControlChannel(channel, value);
   document.getElementById(channel + "val").innerHTML = value;
 }
-
+//connect to bluetooth speed sensor
 async function connectToGarmin() {
   try {
     const device = await navigator.bluetooth.requestDevice({
@@ -61,7 +70,8 @@ async function connectToGarmin() {
     const server = await device.gatt.connect();
     const service = await server.getPrimaryService("cycling_speed_and_cadence");
     const characteristic = await service.getCharacteristic("csc_measurement");
-
+    
+   //listen for speed updates
    characteristic.addEventListener("characteristicvaluechanged", event => {
   const freq = parseSpeed(event.target.value);
   if (freq !== null) {
@@ -76,6 +86,7 @@ async function connectToGarmin() {
   }
 }
 
+// variables for speed calculations
 let lastRev = null;
 let lastTime = null;
 let prevFreq = 0;
@@ -83,6 +94,7 @@ let lastMovementTime = null;
 let idle = false;
 let hasInitialized = false;
 
+//parse speed from bluetooth data
 function parseSpeed(dataView) {
   console.log("Update received at", new Date().toISOString());
   console.log("Raw BLE data:", Array.from(new Uint8Array(dataView.buffer)));
@@ -108,7 +120,7 @@ function parseSpeed(dataView) {
   deltaTime /= 1024;
   if (deltaTime < 0.01) deltaTime = 0.01;
 
- 
+  //update only if the wheel has moved
   if (deltaRev > 0) {
     const speed = deltaRev / deltaTime;
     const limitedSpeed = Math.min(speed, 10);
@@ -131,13 +143,15 @@ function parseSpeed(dataView) {
     csound.setControlChannel("freq", freq);
     return freq;
   }
-
+  //if no update, return previous frequency
   return prevFreq;
 }
 
+//timer to detect idle state
 setInterval(() => {
   const now = Date.now();
 
+  //longer idle timeout at low speed
   let idleTimeout = 2000;
   if (prevFreq < 620) { 
     idleTimeout = 3500;
